@@ -4,33 +4,43 @@
 
 package frc.robot.subsystems;
 
-import edu.wpi.first.math.controller.*;
+import edu.wpi.first.wpilibj.controller.PIDController;
+import edu.wpi.first.wpilibj.kinematics.SwerveModuleState;
+import edu.wpi.first.wpilibj.AnalogEncoder;
 import edu.wpi.first.wpilibj.PWMVictorSPX;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.geometry.Rotation2d;
 
 public class SwerveModule extends SubsystemBase {
     public PWMVictorSPX drive;
     public PWMVictorSPX rot;
 
-    private static final double ROT_P = 1.1;
-    private static final double ROT_I = 0;
-    private static final double ROT_D = 11;
+    private static final double ROT_KP = 1.1;
+    private static final double ROT_KI = 0;
+    private static final double ROT_KD = 11;
 
-    private boolean ROTATION_SENSOR_PHASE;
-    private boolean ROTATION_INVERT;
+    private static final double DRIVE_KF = 0.05;
+    private static final double DRIVE_KS = 0.04;
 
-    public PIDController drivePID;
-    public PIDController rotPID;
-    
+    private PIDController rotPIDController = new PIDController(ROT_KP, ROT_KI, ROT_KD);
 
-    public SwerveModule(int rotPort, int drivePort,
-            boolean rotationSensorPhase, boolean rotationInverted) {
+    private AnalogEncoder rotPot;
 
-        ROTATION_SENSOR_PHASE = rotationSensorPhase;
-        ROTATION_INVERT = rotationInverted;
+    private int ROT_OFFSET;
+    private boolean ROT_PHASE;
+
+    public SwerveModule(int rotPort, int drivePort, int rotPotPort, boolean driveinverted, boolean rotationInverted,
+            boolean potInverted) {
 
         drive = new PWMVictorSPX(drivePort);
         rot = new PWMVictorSPX(rotPort);
+        rotPot = new AnalogEncoder(rotPotPort);
+
+        ROT_PHASE = potInverted;
+
+        drive.setInverted(driveinverted);
+        rot.setInverted(rotationInverted);
+        rotPIDController.enableContinuousInput(-Math.PI, Math.PI);
 
     }
 
@@ -38,6 +48,28 @@ public class SwerveModule extends SubsystemBase {
     public void setMotors(double drivespeed, double rotspeed) {
         drive.set(drivespeed);
         rot.set(rotspeed);
+    }
+
+    public void setDesiredState(SwerveModuleState desiredState) {
+        double potangle = ROT_PHASE ? rotPot.get() : 4095 - rotPot.get();
+        if (potangle < 0)
+            potangle = potangle + 4096;
+        // Optimize the reference state to avoid spinning further than 90 degrees
+        SwerveModuleState state = SwerveModuleState.optimize(desiredState, new Rotation2d(potangle));
+
+        // Calculate the drive output from the drive PID controller.
+        double driveOutput = state.speedMetersPerSecond * DRIVE_KF + Math.signum(state.speedMetersPerSecond) * DRIVE_KS;
+
+        // Calculate the turning motor output from the turning PID controller.
+        double rotOutput = rotPIDController.calculate(potangle, state.angle.getRadians());
+
+        // Set motor outputs.
+        drive.set(driveOutput);
+        rot.set(rotOutput);
+    }
+
+    public void setRotationOffset(int rotoffset) {
+        ROT_OFFSET = rotoffset;
     }
 
     // get rotation speed controller
@@ -52,11 +84,11 @@ public class SwerveModule extends SubsystemBase {
 
     @Override
     public void periodic() {
-      // This method will be called once per scheduler run
+        // This method will be called once per scheduler run
     }
-  
+
     @Override
     public void simulationPeriodic() {
-      // This method will be called once per scheduler run during simulation
+        // This method will be called once per scheduler run during simulation
     }
 }
