@@ -32,19 +32,27 @@ public class SwerveChassis extends SubsystemBase {
     private static final int LT_POT_PORT = 2;
 
     // rotation offsets per module in radians
-    private static final double FT_OFFSET = 0.1; // FT = front
-    private static final double RT_OFFSET = 0.9; // RT = right
-    private static final double LT_OFFSET = -1.1; // LT = left
+    private static final double FT_OFFSET = -2.3; // FT = front
+    private static final double RT_OFFSET = 0.5; // RT = right
+    private static final double LT_OFFSET = -0.1; // LT = left
 
-    private static final boolean FT_ANG_PHASE = false;
-    private static final boolean FT_ANG_INVERT = true;
+    private static final boolean FT_ANG_PHASE = true;
+    private static final boolean FT_ANG_INVERT = false;
     private static final boolean FT_DRIVE_INVERT = true;
-    private static final boolean RT_ANG_PHASE = false;
-    private static final boolean RT_ANG_INVERT = true;
+    private static final boolean RT_ANG_PHASE = true;
+    private static final boolean RT_ANG_INVERT = false;
     private static final boolean RT_DRIVE_INVERT = true;
-    private static final boolean LT_ANG_PHASE = false;
-    private static final boolean LT_ANG_INVERT = true;
+    private static final boolean LT_ANG_PHASE = true;
+    private static final boolean LT_ANG_INVERT = false;
     private static final boolean LT_DRIVE_INVERT = true;
+
+    // drive KF and KS
+    private static final double FT_DRIVE_KF = 0.3;
+    private static final double RT_DRIVE_KF = 0.3;
+    private static final double LT_DRIVE_KF = 0.3;
+    private static final double FT_DRIVE_KS = 0.03;
+    private static final double RT_DRIVE_KS = 0.05;
+    private static final double LT_DRIVE_KS = 0.05;
 
     // kinematics constants
     SwerveDriveKinematics kinematics;
@@ -52,18 +60,20 @@ public class SwerveChassis extends SubsystemBase {
 
     public SwerveChassis() {
         Translation2d frontLocation = new Translation2d(0, 0.337);
-        Translation2d backLeftLocation = new Translation2d(0.292, -0.169);
-        Translation2d backRightLocation = new Translation2d(-0.292, -0.169);
+        Translation2d backLeftLocation = new Translation2d(-0.292, -0.169);
+        Translation2d backRightLocation = new Translation2d(0.292, -0.169);
 
         FT = new SwerveModule(FT_ANG_PORT, FT_DRIVE_PORT, FT_POT_PORT, FT_DRIVE_INVERT, FT_ANG_INVERT, FT_ANG_PHASE);
-
         RT = new SwerveModule(RT_ANG_PORT, RT_DRIVE_PORT, RT_POT_PORT, RT_DRIVE_INVERT, RT_ANG_INVERT, RT_ANG_PHASE);
-
         LT = new SwerveModule(LT_ANG_PORT, LT_DRIVE_PORT, LT_POT_PORT, LT_DRIVE_INVERT, LT_ANG_INVERT, LT_ANG_PHASE);
 
         FT.setRotationOffset(FT_OFFSET);
         RT.setRotationOffset(RT_OFFSET);
         LT.setRotationOffset(LT_OFFSET);
+
+        FT.setDrivePID(FT_DRIVE_KF, FT_DRIVE_KS);
+        RT.setDrivePID(RT_DRIVE_KF, RT_DRIVE_KS);
+        LT.setDrivePID(LT_DRIVE_KF, LT_DRIVE_KS);
 
         SmartDashboard.putNumber("Foffs", FT_OFFSET);
         SmartDashboard.putNumber("Roffs", RT_OFFSET);
@@ -76,12 +86,7 @@ public class SwerveChassis extends SubsystemBase {
 
     }
 
-    public void SetAllMotors(double value) {
-        FT.setMotors(value, 0.5);
-        RT.setMotors(value, 0.5);
-        LT.setMotors(value, 0.5);
-    }
-
+    
     public void Drive(double xSpeed, double ySpeed, double rot) {
         var swerveModuleStates = kinematics.toSwerveModuleStates(new ChassisSpeeds(xSpeed, ySpeed, rot));
         SwerveDriveKinematics.normalizeWheelSpeeds(swerveModuleStates, MAX_SPEED);
@@ -89,10 +94,10 @@ public class SwerveChassis extends SubsystemBase {
         RT.setDesiredState(swerveModuleStates[1]);
         LT.setDesiredState(swerveModuleStates[2]);
 
-        SmartDashboard.putNumber("targetang", swerveModuleStates[0].angle.getRadians());
-        SmartDashboard.putNumber("target", swerveModuleStates[0].speedMetersPerSecond);
-        SmartDashboard.putNumber("PIDtarget", FT.getPIDController().getSetpoint());
-        SmartDashboard.putNumber("PIDerror", FT.getPIDController().getPositionError());
+        SmartDashboard.putNumber("targetangF", swerveModuleStates[0].angle.getRadians());
+        SmartDashboard.putNumber("targetdriveF", swerveModuleStates[0].speedMetersPerSecond);
+        SmartDashboard.putNumber("PIDtargetF", FT.getPIDController().getSetpoint());
+        SmartDashboard.putNumber("PIDerrorF", FT.getPIDController().getPositionError());
 
         double newoffsetF = SmartDashboard.getNumber("Foffs", FT_OFFSET);
         double newoffsetR = SmartDashboard.getNumber("Roffs", RT_OFFSET);

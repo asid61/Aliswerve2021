@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.controller.PIDController;
 import edu.wpi.first.wpilibj.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.AnalogEncoder;
 import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.AnalogPotentiometer;
 import edu.wpi.first.wpilibj.PWMVictorSPX;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.geometry.Rotation2d;
@@ -16,15 +17,16 @@ public class SwerveModule extends SubsystemBase {
     public PWMVictorSPX drive;
     public PWMVictorSPX rot;
 
-    private static final double ROT_KP = 1.5; //1.5;
-    private static final double ROT_KI = 0.5; //0.5;
-    private static final double ROT_KD = 0.01; //0.01;
+    private static final double ROT_KP = 1.8;
+    private static final double ROT_KI = 0.5;
+    private static final double ROT_KD = 0.01;
 
-    private static final double DRIVE_KF = 0.3; //0.2;
-    private static final double DRIVE_KS = 0.05;
+    private double DRIVE_KF = 0.3; //0.2;
+    private double DRIVE_KS = 0.04;
 
     private PIDController rotPIDController = new PIDController(ROT_KP, ROT_KI, ROT_KD);
 
+    //private AnalogPotentiometer rotPot;
     private AnalogInput rotPot;
 
     private double ROT_OFFSET;
@@ -35,9 +37,9 @@ public class SwerveModule extends SubsystemBase {
 
         drive = new PWMVictorSPX(drivePort);
         rot = new PWMVictorSPX(rotPort);
+        //rotPot = new AnalogPotentiometer(rotPotPort, 2.0*Math.PI, -Math.PI);
         rotPot = new AnalogInput(rotPotPort);
-        rotPot.setAverageBits(2); // 4x samples to average
-        //rotPot.reset();
+
 
         ROT_PHASE = potInverted;
 
@@ -76,18 +78,27 @@ public class SwerveModule extends SubsystemBase {
     }
 
     public double getAngle() {
-        double potValue = rotPot.getAverageValue();
-        potValue = (potValue - 2047.5)/ 2047.5 * Math.PI; // convert from 12 bits to radians
+        double potValue = rotPot.getValue()/2590.0 * 2 * Math.PI - Math.PI;
+        potValue = potValue - ROT_OFFSET;
+        while(potValue <= -Math.PI) {potValue = potValue + 2*Math.PI;}
+        while(potValue >= Math.PI) {potValue = potValue - 2*Math.PI;}
+
         double potangle = ROT_PHASE ? potValue : -potValue;
-        // if (potangle < 0)
-        //potangle = 2.0 * (potangle + Math.PI/2.0); // compensate for wrap
-        return potangle - ROT_OFFSET;
+        return potangle;
+    }
+
+    public void setDrivePID(double newkF, double newKS) {
+        DRIVE_KF = newkF;
+        DRIVE_KS = newKS;
     }
 
     public PIDController getPIDController() {
         return rotPIDController;
     }
 
+    public AnalogInput getPot() {
+        return rotPot;
+    }
     // get rotation speed controller
     public PWMVictorSPX getRotMotor() {
         return rot;
