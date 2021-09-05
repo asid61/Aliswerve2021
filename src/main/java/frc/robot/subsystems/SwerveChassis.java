@@ -8,6 +8,9 @@ import edu.wpi.first.wpilibj.geometry.Translation2d;
 import edu.wpi.first.wpilibj.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.wpilibj.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.controller.PIDController;
+
 
 public class SwerveChassis extends SubsystemBase {
 
@@ -28,20 +31,20 @@ public class SwerveChassis extends SubsystemBase {
     private static final int RT_POT_PORT = 1;
     private static final int LT_POT_PORT = 2;
 
-    // rotation offsets per module
-    private static final int FT_OFFSET = 1000; // FT = front
-    private static final int RT_OFFSET = 1000; // RT = right
-    private static final int LT_OFFSET = 1000; // LT = left
+    // rotation offsets per module in radians
+    private static final double FT_OFFSET = 0.1; // FT = front
+    private static final double RT_OFFSET = 0.9; // RT = right
+    private static final double LT_OFFSET = -1.1; // LT = left
 
     private static final boolean FT_ANG_PHASE = false;
-    private static final boolean FT_ANG_INVERT = false;
-    private static final boolean FT_DRIVE_INVERT = false;
+    private static final boolean FT_ANG_INVERT = true;
+    private static final boolean FT_DRIVE_INVERT = true;
     private static final boolean RT_ANG_PHASE = false;
-    private static final boolean RT_ANG_INVERT = false;
-    private static final boolean RT_DRIVE_INVERT = false;
+    private static final boolean RT_ANG_INVERT = true;
+    private static final boolean RT_DRIVE_INVERT = true;
     private static final boolean LT_ANG_PHASE = false;
-    private static final boolean LT_ANG_INVERT = false;
-    private static final boolean LT_DRIVE_INVERT = false;
+    private static final boolean LT_ANG_INVERT = true;
+    private static final boolean LT_DRIVE_INVERT = true;
 
     // kinematics constants
     SwerveDriveKinematics kinematics;
@@ -62,14 +65,21 @@ public class SwerveChassis extends SubsystemBase {
         RT.setRotationOffset(RT_OFFSET);
         LT.setRotationOffset(LT_OFFSET);
 
+        SmartDashboard.putNumber("Foffs", FT_OFFSET);
+        SmartDashboard.putNumber("Roffs", RT_OFFSET);
+        SmartDashboard.putNumber("Loffs", LT_OFFSET);
+        SmartDashboard.putNumber("kp", FT.getPIDController().getP());
+        SmartDashboard.putNumber("ki", FT.getPIDController().getI());
+        SmartDashboard.putNumber("kd", FT.getPIDController().getD());
+
         kinematics = new SwerveDriveKinematics(frontLocation, backLeftLocation, backRightLocation);
 
     }
 
-    public void SetAllMotors() {
-        FT.setMotors(0.1, 0.5);
-        RT.setMotors(0.1, 0.5);
-        LT.setMotors(0.1, 0.5);
+    public void SetAllMotors(double value) {
+        FT.setMotors(value, 0.5);
+        RT.setMotors(value, 0.5);
+        LT.setMotors(value, 0.5);
     }
 
     public void Drive(double xSpeed, double ySpeed, double rot) {
@@ -78,6 +88,45 @@ public class SwerveChassis extends SubsystemBase {
         FT.setDesiredState(swerveModuleStates[0]);
         RT.setDesiredState(swerveModuleStates[1]);
         LT.setDesiredState(swerveModuleStates[2]);
+
+        SmartDashboard.putNumber("targetang", swerveModuleStates[0].angle.getRadians());
+        SmartDashboard.putNumber("target", swerveModuleStates[0].speedMetersPerSecond);
+        SmartDashboard.putNumber("PIDtarget", FT.getPIDController().getSetpoint());
+        SmartDashboard.putNumber("PIDerror", FT.getPIDController().getPositionError());
+
+        double newoffsetF = SmartDashboard.getNumber("Foffs", FT_OFFSET);
+        double newoffsetR = SmartDashboard.getNumber("Roffs", RT_OFFSET);
+        double newoffsetL = SmartDashboard.getNumber("Loffs", LT_OFFSET);
+        double newp = SmartDashboard.getNumber("kp", FT.getPIDController().getP());
+        double newi = SmartDashboard.getNumber("ki", FT.getPIDController().getI());
+        double newd = SmartDashboard.getNumber("kd", FT.getPIDController().getD());
+        FT.setRotationOffset(newoffsetF);
+        FT.getPIDController().setP(newp);
+        FT.getPIDController().setI(newi);
+        FT.getPIDController().setD(newd);
+
+        RT.setRotationOffset(newoffsetR);
+        RT.getPIDController().setP(newp);
+        RT.getPIDController().setI(newi);
+        RT.getPIDController().setD(newd);
+
+        LT.setRotationOffset(newoffsetL);
+        LT.getPIDController().setP(newp);
+        LT.getPIDController().setI(newi);
+        LT.getPIDController().setD(newd);
+        
+    }
+
+    public SwerveModule getFT() {
+        return FT;
+    }
+
+    public SwerveModule getRT() {
+        return RT;
+    }
+
+    public SwerveModule getLT() {
+        return LT;
     }
 
     @Override

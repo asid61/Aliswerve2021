@@ -7,6 +7,7 @@ package frc.robot.subsystems;
 import edu.wpi.first.wpilibj.controller.PIDController;
 import edu.wpi.first.wpilibj.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.AnalogEncoder;
+import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.PWMVictorSPX;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.geometry.Rotation2d;
@@ -15,18 +16,18 @@ public class SwerveModule extends SubsystemBase {
     public PWMVictorSPX drive;
     public PWMVictorSPX rot;
 
-    private static final double ROT_KP = 1.1;
-    private static final double ROT_KI = 0;
-    private static final double ROT_KD = 11;
+    private static final double ROT_KP = 1.5; //1.5;
+    private static final double ROT_KI = 0.5; //0.5;
+    private static final double ROT_KD = 0.01; //0.01;
 
-    private static final double DRIVE_KF = 0.05;
-    private static final double DRIVE_KS = 0.04;
+    private static final double DRIVE_KF = 0.3; //0.2;
+    private static final double DRIVE_KS = 0.05;
 
     private PIDController rotPIDController = new PIDController(ROT_KP, ROT_KI, ROT_KD);
 
-    private AnalogEncoder rotPot;
+    private AnalogInput rotPot;
 
-    private int ROT_OFFSET;
+    private double ROT_OFFSET;
     private boolean ROT_PHASE;
 
     public SwerveModule(int rotPort, int drivePort, int rotPotPort, boolean driveinverted, boolean rotationInverted,
@@ -34,13 +35,16 @@ public class SwerveModule extends SubsystemBase {
 
         drive = new PWMVictorSPX(drivePort);
         rot = new PWMVictorSPX(rotPort);
-        rotPot = new AnalogEncoder(rotPotPort);
+        rotPot = new AnalogInput(rotPotPort);
+        rotPot.setAverageBits(2); // 4x samples to average
+        //rotPot.reset();
 
         ROT_PHASE = potInverted;
 
         drive.setInverted(driveinverted);
         rot.setInverted(rotationInverted);
         rotPIDController.enableContinuousInput(-Math.PI, Math.PI);
+        rotPIDController.setIntegratorRange(-0.1, 0.1);
 
     }
 
@@ -51,11 +55,10 @@ public class SwerveModule extends SubsystemBase {
     }
 
     public void setDesiredState(SwerveModuleState desiredState) {
-        double potangle = ROT_PHASE ? rotPot.get() : 4095 - rotPot.get();
-        if (potangle < 0)
-            potangle = potangle + 4096;
+        double potangle = getAngle();
         // Optimize the reference state to avoid spinning further than 90 degrees
         SwerveModuleState state = SwerveModuleState.optimize(desiredState, new Rotation2d(potangle));
+        //SwerveModuleState state = desiredState;
 
         // Calculate the drive output from the drive PID controller.
         double driveOutput = state.speedMetersPerSecond * DRIVE_KF + Math.signum(state.speedMetersPerSecond) * DRIVE_KS;
@@ -68,8 +71,21 @@ public class SwerveModule extends SubsystemBase {
         rot.set(rotOutput);
     }
 
-    public void setRotationOffset(int rotoffset) {
+    public void setRotationOffset(double rotoffset) {
         ROT_OFFSET = rotoffset;
+    }
+
+    public double getAngle() {
+        double potValue = rotPot.getAverageValue();
+        potValue = (potValue - 2047.5)/ 2047.5 * Math.PI; // convert from 12 bits to radians
+        double potangle = ROT_PHASE ? potValue : -potValue;
+        // if (potangle < 0)
+        //potangle = 2.0 * (potangle + Math.PI/2.0); // compensate for wrap
+        return potangle - ROT_OFFSET;
+    }
+
+    public PIDController getPIDController() {
+        return rotPIDController;
     }
 
     // get rotation speed controller

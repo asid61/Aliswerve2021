@@ -5,8 +5,12 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+
+import frc.robot.subsystems.SwerveChassis;
+import frc.robot.subsystems.SwerveModule;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -46,6 +50,11 @@ public class Robot extends TimedRobot {
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
     CommandScheduler.getInstance().run();
+
+    SmartDashboard.putNumber("angleF", m_robotContainer.getSwerveChassis().getFT().getAngle());
+    SmartDashboard.putNumber("driveF", m_robotContainer.getSwerveChassis().getFT().getRotMotor().getSpeed());
+    SmartDashboard.putNumber("angleR", m_robotContainer.getSwerveChassis().getRT().getAngle());
+    SmartDashboard.putNumber("angleL", m_robotContainer.getSwerveChassis().getLT().getAngle());
   }
 
   /** This function is called once each time the robot enters Disabled mode. */
